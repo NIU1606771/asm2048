@@ -353,7 +353,7 @@ showMatrix:
    mov  rbp, rsp
    
    
-      push rax
+   push rax
    push rbx
    push rcx; fila
    push rdx; columna
@@ -381,7 +381,7 @@ columna:
    add eax, edx
    shl eax, 1
    
-   mov bx, word [m + rax]
+   mov bx, word [m + eax]
    mov eax, ebx
    mov dword [number], eax
    
@@ -684,7 +684,7 @@ APfi:
 rotateMatrix:
    push rbp
    mov  rbp, rsp
-     push rbx
+   push rbx
    push rcx
    push rdx
    push rsi
@@ -708,12 +708,11 @@ columnas:
    add  eax, edi         ; eax = i*4 + j
    shl  eax, 1           ; eax = (i*4 + j)*2
    
-   ; Obtener valor de m[i][j]
-   mov  bx, WORD [m + rax]  ; bx = m[i][j]
+   ; Obtener valor de m[i][j] - CORREGIR: usar eax, NO rax
+   mov  bx, WORD [m + eax]  ; CORRECCIÓN: eax en lugar de rax
    
    ; Calcular índice DESTINO en mAux
    ; Según fórmula: índice = (j*4 + 3 - i)*2
-   ; Nueva posición: mAux[j][3-i]
    mov  eax, edi         ; eax = j (nueva fila)
    shl  eax, 2           ; eax = j * 4
    mov  ecx, 3
@@ -721,8 +720,8 @@ columnas:
    add  eax, ecx         ; eax = j*4 + (3-i)
    shl  eax, 1           ; eax = (j*4 + (3-i))*2
    
-   ; Guardar en mAux[j][3-i]
-   mov  WORD [mAux + rax], bx
+   ; Guardar en mAux[j][3-i] - CORREGIR: usar eax, NO rax
+   mov  WORD [mAux + eax], bx  ; CORRECCIÓN: eax en lugar de rax
    
    inc  edi
    jmp  columnas
@@ -776,42 +775,40 @@ insertTile:
    
 intentar:
    ; Calcular índex: (fila*DimMatrix + 0) * 2 = fila * 8
-   ; Perquè: fila*4 (files) + 0 (columna) = fila*4, *2 (short) = fila*8
    mov eax, ebx         ; eax = fila
    shl eax, 3           ; eax = fila * 8
    
-   ; Verificar si la posició [fila][0] està buida
-   cmp WORD [m + rax], 0
-   je inserir           ; Si està buida, inserir
+   ; Verificar si la posició [fila][0] està buida - CORREGIR: usar eax, NO rax
+   cmp WORD [m + eax], 0  ; CORRECCIÓ: eax en lloc de rax
+   je inserir
    
    ; Si està plena, provar següent fila
-   inc ebx              ; següent fila
-   and ebx, 3           ; mòdul 4 (0-3)
-   inc ecx              ; incrementar comptador
-   cmp ecx, 4           ; hem provat totes 4 files?
-   jl intentar          ; si no, seguir provant
+   inc ebx
+   and ebx, 3
+   inc ecx
+   cmp ecx, 4
+   jl intentar
    
-   ; Si arribem aquí, totes 4 posicions estan plenes
-   mov BYTE [state], 4  ; taulell ple
+   ; Tot ple
+   mov BYTE [state], 4
    jmp ITfi
 
 inserir:
-   ; Inserir valor 2 a la posició buida
-   mov WORD [m + rax], 2
+   ; Inserir valor 2 - CORREGIR: usar eax, NO rax
+   mov WORD [m + eax], 2  ; CORRECCIÓ: eax en lloc de rax
    
-   ; Actualitzar rowInsert per a la propera vegada
-   inc ebx              ; següent fila per a la propera inserció
-   and ebx, 3           ; mòdul 4
+   ; Actualitzar rowInsert
+   inc ebx
+   and ebx, 3
    mov DWORD [rowInsert], ebx
    
-   ; Posar estat a 2 (s'ha inserit)
    mov BYTE [state], 2
 
 ITfi:
-   ; Restaurar registres
    pop rdx
    pop rcx
    pop rbx
+
    
   
    mov rsp, rbp
@@ -831,21 +828,27 @@ gameWin:
    push rbp
    mov  rbp, rsp
 
-
-   mov rcx, 0
-   comprovar:
-   cmp word [m + rcx*2], 2048
+   push rcx  ; Preservar rcx
+   
+   mov ecx, 0  ; Usar ecx (32-bit), NO rcx (64-bit)
+   
+comprovar:
+   cmp ecx, 16
+   jge GWfi
+   
+   ; CORREGIR: usar ecx*2, NO rcx*2
+   cmp WORD [m + ecx*2], 2048
    je eti
-   inc rcx
-   cmp rcx, 16
-   jl comprovar
-    ; No hay 2048
-   jmp GWfi
+   
+   inc ecx
+   jmp comprovar
 
-   eti:
-   mov byte[state], 3
+eti:
+   mov BYTE [state], 3
 
-    GWfi:
+GWfi:
+   pop rcx  ; Restaurar rcx
+
 
    mov rsp, rbp
    pop rbp
@@ -886,73 +889,90 @@ onePlay:
    call getch
 
    ; Comprovar tecla
-   cmp byte [charac], 27  ; ESC
+   cmp BYTE [charac], 27  ; ESC
    je esc
 
-   cmp byte [charac], 'i'  ; amunt
+   cmp BYTE [charac], 'i'  ; amunt
    je amunt
-   cmp byte [charac], 'j'  ; esquerra
+   cmp BYTE [charac], 'j'  ; esquerra
    je esquerra
-   cmp byte [charac], 'k'  ; avall
+   cmp BYTE [charac], 'k'  ; avall
    je avall
-   cmp byte [charac], 'l'  ; dreta
+   cmp BYTE [charac], 'l'  ; dreta
    je dreta
-   jmp OPfi                ; tecla invàlida
-
-esc:
-   mov byte [state], 0
    jmp OPfi
 
-amunt:                 ; amunt: 4 rotacions
-   call rotateMatrix   ; 1
-   call rotateMatrix   ; 2
-   call rotateMatrix   ; 3
-   call rotateMatrix   ; 4
+esc:
+   mov BYTE [state], 0
+   jmp OPfi
+
+amunt:                 ; amunt: 1 rotació
+   call rotateMatrix
    jmp fer_desplacaments
 
-esquerra:              ; esquerra: 4 rotacions
-   call rotateMatrix   ; 1
-   call rotateMatrix   ; 2
-   call rotateMatrix   ; 3
-   call rotateMatrix   ; 4
+esquerra:              ; esquerra: 3 rotacions
+   call rotateMatrix
+   call rotateMatrix
+   call rotateMatrix
    jmp fer_desplacaments
 
-avall:                 ; avall: 4 rotacions
-   call rotateMatrix   ; 1
-   call rotateMatrix   ; 2
-   call rotateMatrix   ; 3
-   call rotateMatrix   ; 4
+avall:                 ; avall: 2 rotacions
+   call rotateMatrix
+   call rotateMatrix
    jmp fer_desplacaments
 
 dreta:                 ; dreta: 0 rotacions
-   ; No cal rotar
    jmp fer_desplacaments
 
 fer_desplacaments:
-   ; INICIALITZAR ESTAT A 1 - AQUESTA LÍNIA ÉS CRÍTICA!
-   mov byte [state], 1
+   ; Estat inicial
+   mov BYTE [state], 1
    
-   ; Fer els desplaçaments
+   ; Desplaçar
    call shiftNumbers
    call addPairs
    call shiftNumbers
+   
+   ; Restaurar rotació
+   cmp BYTE [charac], 'i'
+   je restaurar_amunt
+   cmp BYTE [charac], 'j'
+   je restaurar_esquerra
+   cmp BYTE [charac], 'k'
+   je restaurar_avall
+   jmp despres_restauracio
 
-   ; Comprovar si hem guanyat
+restaurar_amunt:      ; amunt: +3 rotacions (total 4)
+   call rotateMatrix
+   call rotateMatrix
+   call rotateMatrix
+   jmp despres_restauracio
+
+restaurar_esquerra:   ; esquerra: +1 rotació (total 4)
+   call rotateMatrix
+   jmp despres_restauracio
+
+restaurar_avall:      ; avall: +2 rotacions (total 4)
+   call rotateMatrix
+   call rotateMatrix
+   jmp despres_restauracio
+
+despres_restauracio:
+   ; Guanyar?
    call gameWin
-   cmp byte [state], 3
+   cmp BYTE [state], 3
    je OPfi
-
-   ; Inserir nou 2 només si hi ha hagut moviment
-   cmp byte [state], 2
+   
+   ; Inserir si hi ha hagut moviment
+   cmp BYTE [state], 2
    jne OPfi
    call insertTile
 
 OPfi:
-   ; Mostrar matriu actualitzada
+   ; Mostrar matriu
    call showMatrix
-    
+   
 
- 
    mov rsp, rbp
    pop rbp
    ret
