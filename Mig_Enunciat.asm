@@ -20,7 +20,7 @@ extern rowScreen, colScreen, charac, number, row, col, rowInsert
 extern m, mAux, score, state
 
 ;Funcions de C que es criden des de assemblador
-extern gotoxy_C, getch_C, printch_C
+extern gotoxy_C, getch_C, printch_C, printMessage_C
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ATENCIÓ: Recordeu que en assemblador les variables i els paràmetres 
@@ -529,7 +529,7 @@ SNbuclecol:
    add edi, ebx
    shl edi, 1
    mov word [m + edi], 0 ;posem el 0
-   mov byte [state], 2 ;indiquem que hem fet modificacions
+   mov byte [state], '2' ;indiquem que hem fet modificacions
 SNcont:
    inc ecx ;diferencia +1
 SNseguent:
@@ -626,7 +626,7 @@ APbuclecol:
    mov word [m + edi], dx        
    mov word [m + esi], 0; posem el 0 a l'esquerra         
    
-   mov byte [state], 2 ;indiquem que hem editat
+   mov byte [state], '2' ;indiquem que hem editat
    
 APnextc:
    dec ebx ;col -1
@@ -684,6 +684,7 @@ APfi:
 rotateMatrix:
    push rbp
    mov  rbp, rsp
+   
    push rbx
    push rcx
    push rdx
@@ -702,26 +703,24 @@ columnas:
    cmp  edi, 4
    jge  fin_columnas
    
-   ; Calcular índice ORIGINAL en m: (i*4 + j)*2
+   ; ORIGINAL m: (i*4 + j)*2
    mov  eax, esi         ; eax = i
    shl  eax, 2           ; eax = i * 4
    add  eax, edi         ; eax = i*4 + j
    shl  eax, 1           ; eax = (i*4 + j)*2
    
-   ; Obtener valor de m[i][j] - CORREGIR: usar eax, NO rax
-   mov  bx, WORD [m + eax]  ; CORRECCIÓN: eax en lugar de rax
+   mov  bx, WORD [m + eax] 
    
-   ; Calcular índice DESTINO en mAux
-   ; Según fórmula: índice = (j*4 + 3 - i)*2
-   mov  eax, edi         ; eax = j (nueva fila)
+   ; DESTI mAux
+   mov  eax, edi         ; eax = j 
    shl  eax, 2           ; eax = j * 4
    mov  ecx, 3
-   sub  ecx, esi         ; ecx = 3 - i (nueva columna)
+   sub  ecx, esi         ; ecx = 3 - i 
    add  eax, ecx         ; eax = j*4 + (3-i)
    shl  eax, 1           ; eax = (j*4 + (3-i))*2
    
-   ; Guardar en mAux[j][3-i] - CORREGIR: usar eax, NO rax
-   mov  WORD [mAux + eax], bx  ; CORRECCIÓN: eax en lugar de rax
+   ; Guardar mAux[j][3-i] 
+   mov  WORD [mAux + eax], bx
    
    inc  edi
    jmp  columnas
@@ -765,51 +764,42 @@ ret
 insertTile:
    push rbp
    mov  rbp, rsp
-   ; Preservar registres
    push rbx
    push rcx
    push rdx
    
-   mov ecx, 0           ; contador d'intents (0..3)
-   mov ebx, DWORD[rowInsert] ; fila actual a provar
+   mov ecx, 0
+   mov ebx, DWORD[rowInsert]
    
 intentar:
-   ; Calcular índex: (fila*DimMatrix + 0) * 2 = fila * 8
-   mov eax, ebx         ; eax = fila
-   shl eax, 3           ; eax = fila * 8
+   mov eax, ebx
+   shl eax, 3  ; (fila * 8) porque cada fila tiene 4 elementos de 2 bytes
    
-   ; Verificar si la posició [fila][0] està buida - CORREGIR: usar eax, NO rax
-   cmp WORD [m + eax], 0  ; CORRECCIÓ: eax en lloc de rax
+   cmp WORD [m + eax], 0
    je inserir
    
-   ; Si està plena, provar següent fila
    inc ebx
-   and ebx, 3
+   and ebx, 3  ; Mantener entre 0-3
    inc ecx
    cmp ecx, 4
    jl intentar
    
-   ; Tot ple
-   mov BYTE [state], 4
+   ; Si no puede insertar después de intentar las 4 filas
+   mov BYTE [state], '4'  ; Estado bloqueado
    jmp ITfi
 
 inserir:
-   ; Inserir valor 2 - CORREGIR: usar eax, NO rax
-   mov WORD [m + eax], 2  ; CORRECCIÓ: eax en lloc de rax
-   
-   ; Actualitzar rowInsert
+   mov WORD [m + eax], 2
    inc ebx
-   and ebx, 3
+   and ebx, 3  ; Mantener entre 0-3
    mov DWORD [rowInsert], ebx
-   
-   mov BYTE [state], 2
+   ; No cambiar state aquí, ya debería ser '2'
 
 ITfi:
    pop rdx
    pop rcx
    pop rbx
 
-   
   
    mov rsp, rbp
    pop rbp
@@ -828,15 +818,14 @@ gameWin:
    push rbp
    mov  rbp, rsp
 
-   push rcx  ; Preservar rcx
+
+   push rcx
    
-   mov ecx, 0  ; Usar ecx (32-bit), NO rcx (64-bit)
-   
+   mov ecx, 0
 comprovar:
    cmp ecx, 16
    jge GWfi
    
-   ; CORREGIR: usar ecx*2, NO rcx*2
    cmp WORD [m + ecx*2], 2048
    je eti
    
@@ -844,10 +833,10 @@ comprovar:
    jmp comprovar
 
 eti:
-   mov BYTE [state], 3
+   mov BYTE [state], '3'  ; Carácter '3' para indicar ganado
 
 GWfi:
-   pop rcx  ; Restaurar rcx
+   pop rcx
 
 
    mov rsp, rbp
@@ -882,6 +871,14 @@ GWfi:
 onePlay:
    push rbp
    mov  rbp, rsp
+  
+   ; Guardar registres
+   push rbx
+   push rcx
+   push rdx
+   push rsi
+   push rdi
+   
    ; Mostrar matriu
    call showMatrix
 
@@ -889,7 +886,7 @@ onePlay:
    call getch
 
    ; Comprovar tecla
-   cmp BYTE [charac], 27  ; ESC
+   cmp BYTE [charac], 27  ; ESC (número 27)
    je esc
 
    cmp BYTE [charac], 'i'  ; amunt
@@ -903,35 +900,37 @@ onePlay:
    jmp OPfi
 
 esc:
-   mov BYTE [state], 0
+   mov BYTE [state], '0'  ; Carácter '0'
    jmp OPfi
 
-amunt:                 ; amunt: 1 rotació
+amunt:
    call rotateMatrix
    jmp fer_desplacaments
 
-esquerra:              ; esquerra: 3 rotacions
+esquerra:
    call rotateMatrix
-   call rotateMatrix
-   call rotateMatrix
-   jmp fer_desplacaments
-
-avall:                 ; avall: 2 rotacions
    call rotateMatrix
    call rotateMatrix
    jmp fer_desplacaments
 
-dreta:                 ; dreta: 0 rotacions
+avall:
+   call rotateMatrix
+   call rotateMatrix
+   jmp fer_desplacaments
+
+dreta:
+   ; No cal fer rotacions per a la dreta
    jmp fer_desplacaments
 
 fer_desplacaments:
-   ; Estat inicial
-   mov BYTE [state], 1
+   ; Estat inicial - jugar
+   mov BYTE [state], '1'
    
    ; Desplaçar
    call shiftNumbers
    call addPairs
    call shiftNumbers
+   call insertTile
    
    ; Restaurar rotació
    cmp BYTE [charac], 'i'
@@ -942,36 +941,43 @@ fer_desplacaments:
    je restaurar_avall
    jmp despres_restauracio
 
-restaurar_amunt:      ; amunt: +3 rotacions (total 4)
+restaurar_amunt:
    call rotateMatrix
    call rotateMatrix
    call rotateMatrix
    jmp despres_restauracio
 
-restaurar_esquerra:   ; esquerra: +1 rotació (total 4)
+restaurar_esquerra:
+   call rotateMatrix
    call rotateMatrix
    jmp despres_restauracio
 
-restaurar_avall:      ; avall: +2 rotacions (total 4)
-   call rotateMatrix
+restaurar_avall:
    call rotateMatrix
    jmp despres_restauracio
 
 despres_restauracio:
-   ; Guanyar?
+   ; Comprovar si hem guanyat
    call gameWin
-   cmp BYTE [state], 3
+   cmp BYTE [state], '3'  ; Carácter '3'
    je OPfi
    
-   ; Inserir si hi ha hagut moviment
-   cmp BYTE [state], 2
-   jne OPfi
-   call insertTile
+  
+   
+
 
 OPfi:
-   ; Mostrar matriu
-   call showMatrix
+   ; Restaurar registres
+   pop rdi
+   pop rsi
+   pop rdx
+   pop rcx
+   pop rbx
    
+   ; Mostrar matriu actualitzada
+   call showMatrix
+
+ 
 
    mov rsp, rbp
    pop rbp
@@ -1005,25 +1011,29 @@ OPfi:
 playGame:
    push rbp
    mov  rbp, rsp
+   
+   
+; Inicialitzar estat del joc
+   mov BYTE [state], '1'
 
- mov byte [state], 1
+PGbucle:
+   call onePlay
+   
+   ; Comprovar si hem de sortir
+   cmp BYTE [state], '0'  ; ESC premut
+   je PGfi
+   cmp BYTE [state], '3'  ; 2048 - Has guanyat
+   je PGfi
+   cmp BYTE [state], '4'  ; Taulell ple - Has perdut
+   je PGfi
+   
+   jmp PGbucle
 
-    PGbucle:
-        call onePlay
-        cmp byte [state], 0  ; ESC
-        je PGfi
-        cmp byte [state], 3  ; 2048
-        je PGfi
-        cmp byte [state], 4  ; tablero lleno
-        je PGfi
-        jmp PGbucle
-
-    PGfi:
-    ; printMessage_C se llama desde C
-
-
+PGfi:
+   ; Mostrar missatge final
 
    
+ 
    
    mov rsp, rbp
    pop rbp

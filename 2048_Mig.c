@@ -294,7 +294,7 @@ void printMessage_C() {
          printf("<<<<<<<< 2048 YOU WIN >>>>>>>");
       break;
 
-      case '5':
+      case '4':
          printf("<<<<<<<< YOU HAVE LOST >>>>>>>");
       break;
 
