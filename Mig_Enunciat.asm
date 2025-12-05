@@ -20,7 +20,7 @@ extern rowScreen, colScreen, charac, number, row, col, rowInsert
 extern m, mAux, score, state
 
 ;Funcions de C que es criden des de assemblador
-extern gotoxy_C, getch_C, printch_C, printMessage_C
+extern gotoxy_C, getch_C, printch_C
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ATENCIÓ: Recordeu que en assemblador les variables i els paràmetres 
