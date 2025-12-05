@@ -626,7 +626,7 @@ APbuclecol:
    mov word [m + edi], dx        
    mov word [m + esi], 0; posem el 0 a l'esquerra         
    
-   mov byte [state], '2' ;indiquem que hem editat
+   mov byte [state], '2' ;edit
    
 APnextc:
    dec ebx ;col -1
@@ -691,32 +691,32 @@ rotateMatrix:
    push rsi
    push rdi
    
-   mov  esi, 0           ; i = fila (0..3)
+   mov  esi, 0           ; i = fila 
    
 filas:
    cmp  esi, 4
    jge  fin_filas
    
-   mov  edi, 0           ; j = columna (0..3)
+   mov  edi, 0           ; j = columna 
    
 columnas:
    cmp  edi, 4
    jge  fin_columnas
    
    ; ORIGINAL m: (i*4 + j)*2
-   mov  eax, esi         ; eax = i
-   shl  eax, 2           ; eax = i * 4
-   add  eax, edi         ; eax = i*4 + j
+   mov  eax, esi       
+   shl  eax, 2          
+   add  eax, edi     
    shl  eax, 1           ; eax = (i*4 + j)*2
    
    mov  bx, WORD [m + eax] 
    
    ; DESTI mAux
-   mov  eax, edi         ; eax = j 
-   shl  eax, 2           ; eax = j * 4
+   mov  eax, edi        
+   shl  eax, 2         
    mov  ecx, 3
-   sub  ecx, esi         ; ecx = 3 - i 
-   add  eax, ecx         ; eax = j*4 + (3-i)
+   sub  ecx, esi         
+   add  eax, ecx         
    shl  eax, 1           ; eax = (j*4 + (3-i))*2
    
    ; Guardar mAux[j][3-i] 
@@ -730,10 +730,9 @@ fin_columnas:
    jmp  filas
    
 fin_filas:
-   ; Copiar mAux a m
+   ; mAux a m
    call copyMatrix
    
-   ; Restaurar registros
    pop  rdi
    pop  rsi
    pop  rdx
@@ -773,27 +772,25 @@ insertTile:
    
 intentar:
    mov eax, ebx
-   shl eax, 3  ; (fila * 8) porque cada fila tiene 4 elementos de 2 bytes
+   shl eax, 3  
    
    cmp WORD [m + eax], 0
    je inserir
    
    inc ebx
-   and ebx, 3  ; Mantener entre 0-3
+   and ebx, 3 
    inc ecx
    cmp ecx, 4
    jl intentar
    
-   ; Si no puede insertar después de intentar las 4 filas
-   mov BYTE [state], '4'  ; Estado bloqueado
+   mov BYTE [state], '4'  ; HAS PERDUT
    jmp ITfi
 
 inserir:
    mov WORD [m + eax], 2
    inc ebx
-   and ebx, 3  ; Mantener entre 0-3
+   and ebx, 3  
    mov DWORD [rowInsert], ebx
-   ; No cambiar state aquí, ya debería ser '2'
 
 ITfi:
    pop rdx
@@ -833,7 +830,7 @@ comprovar:
    jmp comprovar
 
 eti:
-   mov BYTE [state], '3'  ; Carácter '3' para indicar ganado
+   mov BYTE [state], '3'  ; Has guanyat
 
 GWfi:
    pop rcx
@@ -872,21 +869,17 @@ onePlay:
    push rbp
    mov  rbp, rsp
   
-   ; Guardar registres
    push rbx
    push rcx
    push rdx
    push rsi
    push rdi
-   
-   ; Mostrar matriu
+
    call showMatrix
 
-   ; Llegir tecla
    call getch
 
-   ; Comprovar tecla
-   cmp BYTE [charac], 27  ; ESC (número 27)
+   cmp BYTE [charac], 27  ; ESC (número 27ascii)
    je esc
 
    cmp BYTE [charac], 'i'  ; amunt
@@ -905,68 +898,60 @@ esc:
 
 amunt:
    call rotateMatrix
-   jmp fer_desplacaments
+   jmp ferDesp
 
 esquerra:
    call rotateMatrix
    call rotateMatrix
    call rotateMatrix
-   jmp fer_desplacaments
+   jmp ferDesp
 
 avall:
    call rotateMatrix
    call rotateMatrix
-   jmp fer_desplacaments
+   jmp ferDesp
 
 dreta:
-   ; No cal fer rotacions per a la dreta
-   jmp fer_desplacaments
+   jmp ferDesp
 
-fer_desplacaments:
+ferDesp:
    ; Estat inicial - jugar
    mov BYTE [state], '1'
    
-   ; Desplaçar
+   ; executem les funcions
    call shiftNumbers
    call addPairs
    call shiftNumbers
    call insertTile
    
-   ; Restaurar rotació
+   ; Recol·loquem la mat
    cmp BYTE [charac], 'i'
-   je restaurar_amunt
+   je tornarAmunt
    cmp BYTE [charac], 'j'
-   je restaurar_esquerra
+   je tornarEsquerra
    cmp BYTE [charac], 'k'
-   je restaurar_avall
-   jmp despres_restauracio
+   je tornarAvall
+   jmp OPfi
 
-restaurar_amunt:
+tornarAmunt:
    call rotateMatrix
    call rotateMatrix
    call rotateMatrix
-   jmp despres_restauracio
+   jmp OPfi
 
-restaurar_esquerra:
+tornarEsquerra:
    call rotateMatrix
    call rotateMatrix
-   jmp despres_restauracio
+   jmp OPfi
 
-restaurar_avall:
+tornarAvall:
    call rotateMatrix
-   jmp despres_restauracio
-
-despres_restauracio:
-   ; Comprovar si hem guanyat
-   call gameWin
-   cmp BYTE [state], '3'  ; Carácter '3'
-   je OPfi
-   
-  
-   
-
+   jmp OPfi
 
 OPfi:
+   ; Comprovar si hem guanyat
+   call gameWin
+
    ; Restaurar registres
    pop rdi
    pop rsi
