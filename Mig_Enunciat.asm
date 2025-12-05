@@ -998,27 +998,23 @@ playGame:
    mov  rbp, rsp
    
    
-; Inicialitzar estat del joc
+;ini
    mov BYTE [state], '1'
 
 PGbucle:
    call onePlay
    
    ; Comprovar si hem de sortir
-   cmp BYTE [state], '0'  ; ESC premut
+   cmp BYTE [state], '0'  ;ESC
    je PGfi
-   cmp BYTE [state], '3'  ; 2048 - Has guanyat
+   cmp BYTE [state], '3'  ;2048 - Has guanyat
    je PGfi
-   cmp BYTE [state], '4'  ; Taulell ple - Has perdut
+   cmp BYTE [state], '4'  ;m plena- Has perdut
    je PGfi
    
    jmp PGbucle
 
 PGfi:
-   ; Mostrar missatge final
-
-   
- 
    
    mov rsp, rbp
    pop rbp
